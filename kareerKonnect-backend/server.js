@@ -6,8 +6,8 @@ const cors = require('cors');
 
 const userRoutes = require('./routes/userRoutes');
 const questionRoutes = require('./routes/questionRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
-const authRoutes = require('./routes/authRoutes'); // ⬅️ Added auth routes
+const authRoutes = require('./routes/authRoutes');
+const eventRoutes = require('./routes/eventRoutes');
 
 const app = express();
 
@@ -16,14 +16,14 @@ app.use(cors());
 app.use(express.json());
 
 // API Routes
-app.use('/api/auth', authRoutes); // ⬅️ New auth route
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/questions', questionRoutes);
-app.use('/api/notifications', notificationRoutes);
+app.use('/api/events', eventRoutes); 
 
 // Root Route
 app.get('/', (req, res) => {
-  res.send("🚀 API is running...");
+  res.send("API is running...");
 });
 
 // Start Server
@@ -34,11 +34,11 @@ mongoose.connect(process.env.MONGO_URI, {
   useUnifiedTopology: true
 })
 .then(() => {
-  console.log("✅ MongoDB connected");
+  console.log("MongoDB connected");
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
   });
 })
 .catch((err) => {
-  console.error("❌ MongoDB connection error:", err);
+  console.error("MongoDB connection error:", err.message);
 });
