@@ -8,7 +8,7 @@ const userRoutes = require('./routes/userRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const authRoutes = require('./routes/authRoutes');
 const eventRoutes = require('./routes/eventRoutes');
-
+const replyRoutes = require('./routes/replyRoutes'); 
 const app = express();
 
 // Middleware
@@ -19,6 +19,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/questions', questionRoutes);
+app.use('/api/questions', replyRoutes); // Assuming you have a replyRoutes file
 app.use('/api/events', eventRoutes); 
 
 // Root Route

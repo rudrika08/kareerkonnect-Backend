@@ -1,28 +1,37 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const sendOTPToEmail = require('../utils/sendOtp');
 
+// Login Controller
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password)
+  if (!email || !password) {
+    console.error("Login error: Missing email or password");
     return res.status(400).json({ error: "Email and password are required." });
+  }
 
   try {
     const user = await User.findOne({ email });
 
-    if (!user)
+    if (!user) {
+      console.error("Login error: User not found for email:", email);
       return res.status(401).json({ error: "Invalid credentials." });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isMatch)
+    if (!isMatch) {
+      console.error("Login error: Password mismatch for user:", email);
       return res.status(401).json({ error: "Invalid credentials." });
+    }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: '7d',
     });
 
+    console.log(`✅ Login successful for ${email}`);
     res.status(200).json({
       token,
       user: {
@@ -37,40 +46,57 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: "Server error." });
   }
 };
+
+// Register Controller
 exports.register = async (req, res) => {
   const { name, email, password, role } = req.body;
 
-  if (!name || !email || !password)
+  if (!name || !email || !password) {
+    console.error("Registration error: Missing fields");
     return res.status(400).json({ error: "Name, email, and password are required." });
+  }
 
   try {
     const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(409).json({ error: "Email already registered." });
-
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const newUser = new User({ name, email, password: hashedPassword, role: role || 'user' });
-    await newUser.save();
+    if (existingUser && existingUser.isVerified) {
+      console.error("Registration error: Email already registered and verified:", email);
+      return res.status(409).json({ error: "Email already registered." });
+    }
 
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    if (existingUser && !existingUser.isVerified) {
+      existingUser.name = name;
+      existingUser.password = hashedPassword;
+      existingUser.otp = otp;
+      existingUser.role = role || 'user';
+      await existingUser.save();
+      console.log("🔄 Updated unverified user:", email);
+    } else {
+      const newUser = new User({
+        name,
+        email,
+        password,
+        otp,
+        role: role || 'user',
+      });
+      await newUser.save();
+      console.log("🆕 New user registered:", email);
+    }
 
-    res.status(201).json({
-      token,
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-      },
-    });
+    await sendOTPToEmail(email, otp);
+    console.log(`📧 OTP sent to ${email}: ${otp}`);
+
+    res.status(200).json({ message: "OTP sent to your email. Please verify to complete registration." });
   } catch (err) {
     console.error("Registration error:", err);
     res.status(500).json({ error: "Server error." });
   }
 };
 
+// Refresh JWT Token
 exports.refreshToken = async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -85,6 +111,8 @@ exports.refreshToken = async (req, res) => {
     res.status(401).json({ error: "Invalid or expired token." });
   }
 };
+
+// Get User Profile
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
@@ -96,6 +124,8 @@ exports.getUserProfile = async (req, res) => {
     res.status(500).json({ error: "Server error." });
   }
 };
+
+// Update User Profile
 exports.updateUserProfile = async (req, res) => {
   const { name, email } = req.body;
 
@@ -113,6 +143,8 @@ exports.updateUserProfile = async (req, res) => {
     res.status(500).json({ error: "Server error." });
   }
 };
+
+// Update User Password
 exports.updateUserPassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
@@ -123,7 +155,8 @@ exports.updateUserPassword = async (req, res) => {
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) return res.status(401).json({ error: "Invalid current password." });
 
-    user.password = newPassword;
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
     await user.save();
 
     res.status(200).json({ message: "Password updated successfully." });
@@ -132,6 +165,8 @@ exports.updateUserPassword = async (req, res) => {
     res.status(500).json({ error: "Server error." });
   }
 };
+
+// Delete User Account
 exports.deleteUserAccount = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.user.id);
@@ -143,4 +178,3 @@ exports.deleteUserAccount = async (req, res) => {
     res.status(500).json({ error: "Server error." });
   }
 };
-

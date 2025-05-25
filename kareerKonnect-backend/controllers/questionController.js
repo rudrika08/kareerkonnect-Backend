@@ -1,13 +1,13 @@
 const Question = require('../models/Discussion');
 
-// Create a new question
+// Create a new question (only for logged-in users)
 exports.createQuestion = async (req, res) => {
   try {
-    console.log("📥 Incoming body:", req.body);
-    const { question, postedBy } = req.body;
+    const { question } = req.body;
+    const postedBy = req.user.name; // Or use req.user._id if you're saving user IDs
 
-    if (!question || !postedBy) {
-      return res.status(400).json({ error: "Missing fields: question and postedBy are required" });
+    if (!question) {
+      return res.status(400).json({ error: "Question is required" });
     }
 
     const newQuestion = new Question({ question, postedBy });
@@ -22,7 +22,7 @@ exports.createQuestion = async (req, res) => {
 // Get all questions
 exports.getAllQuestions = async (req, res) => {
   try {
-    const questions = await Question.find().sort({ timestamp: -1 });
+    const questions = await Question.find().sort({ timestamp: -1 }).populate('postedBy', 'name');
     res.status(200).json(questions);
   } catch (error) {
     console.error("Error fetching questions:", error);
@@ -30,14 +30,14 @@ exports.getAllQuestions = async (req, res) => {
   }
 };
 
-// Get a single question and increase views
+// Get a single question and increment views
 exports.getQuestionById = async (req, res) => {
   try {
-    console.log('Fetching question ID:', req.params.id);
-    const question = await Question.findById(req.params.id);
+    const question = await Question.findById(req.params.id).populate('postedBy', 'name');
     if (!question) {
       return res.status(404).json({ error: 'Question not found.' });
     }
+
     question.views += 1;
     await question.save();
     res.status(200).json(question);
