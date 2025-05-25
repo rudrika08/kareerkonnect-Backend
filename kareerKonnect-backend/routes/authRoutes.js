@@ -8,9 +8,10 @@ const {
   getUserProfile,
   updateUserProfile,
   updateUserPassword,
-  deleteUserAccount
+  deleteUserAccount,
 } = require('../controllers/authController');
 
+const {verifyOTP} = require('../controllers/verifyOTPController');
 const { requireLogin, isAdmin } = require('../middleware/auth');
 
 // Register new user
@@ -38,5 +39,7 @@ router.delete('/me', requireLogin, deleteUserAccount);
 router.get('/admin-only', requireLogin, isAdmin, (req, res) => {
   res.json({ message: "Welcome Admin!" });
 });
+// routes/auth.js
+router.post('/verify-otp', verifyOTP);
 
 module.exports = router;

@@ -13,7 +13,7 @@ const getUpcomingEvents = async (req, res) => {
 
 // Create a new event (admin only)
 const createEvent = async (req, res) => {
-  const { title, link, dateTime, description, type, reminderEnabled } = req.body;
+  const { title, link, dateTime, description, type, hostedBy,reminderEnabled } = req.body;
 
   // Basic validation
   if (!title || !link || !dateTime || !description || !type) {
@@ -27,6 +27,7 @@ const createEvent = async (req, res) => {
       dateTime,
       description,
       type,
+      hostedBy,
       reminderEnabled: reminderEnabled || false,
     });
 
@@ -47,9 +48,19 @@ const getEventById = async (req, res) => {
     res.status(500).json({ message: 'Error fetching event', error: err.message });
   }
 };
+//Get all events
+const getAllEvents = async (req, res) => {
+  try {
+    const events = await Event.find().sort({ dateTime: 1 });
+    res.status(200).json(events);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch events', error: err.message });
+  }
+};
 
 module.exports = {
   getUpcomingEvents,
   createEvent,
   getEventById,
+  getAllEvents
 };
